@@ -21,3 +21,6 @@
     </div>
 </div>
 @endsection
+
+@push('style')
+@endpush
