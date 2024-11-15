@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
+use App\Models\Complaint;
+use App\Models\ActionStatus;
+use Illuminate\Http\Request;
 use App\Http\Requests\StoreComplaintRequest;
 use App\Http\Requests\UpdateComplaintRequest;
-use App\Models\Complaint;
 
 class ComplaintController extends Controller
 {
@@ -13,13 +16,26 @@ class ComplaintController extends Controller
      */
     public function index()
     {
-        $complaints = Complaint::paginate(15);
+        abort_unless(auth()->user()->can(['COMPLAINT:LIST']), 403);
+
+        $complaints = Complaint::query()
+            ->filters()
+            ->when(auth()->user()->hasRole(['investigator']), function ($q) {
+                $q->where('user_id', auth()->user()->id);
+            })
+            ->with('latest_action', 'user')
+            ->orderBy('updated_at', 'desc')
+            ->paginate(15);
+
+        $users = User::select(['id', 'name'])->get();
+        
+        $actionStatuses = ActionStatus::select(['id', 'name'])->get();
 
         return view('complaint.index', [
-            'complaints' => $complaints
+            'complaints' => $complaints,
+            'users' => $users,
+            'actionStatuses' => $actionStatuses,
         ]);
-
-        // return view('complaint.index', compact('complaints'));
     }
 
     /**
@@ -27,7 +43,14 @@ class ComplaintController extends Controller
      */
     public function create()
     {
-        //
+        abort_unless(auth()->user()->can(['COMPLAINT:CREATE']), 403);
+
+        $users = User::select(['id', 'name'])->get();
+
+        return view('complaint.edit', [
+            'complaint' => new Complaint,
+            'users' => $users,
+        ]);
     }
 
     /**
@@ -35,7 +58,26 @@ class ComplaintController extends Controller
      */
     public function store(StoreComplaintRequest $request)
     {
-        //
+        abort_unless(auth()->user()->can(['COMPLAINT:CREATE']), 403);
+
+        $request->validate([
+            'title' => ['required', 'max:100'],
+            'description' => ['required', 'max:255'],
+            'user_id' => ['required', 'exists:users,id'],
+        ]);
+
+        $complaint = Complaint::create([
+            'title' => $request->input('title'),
+            'description' => $request->input('description'),
+            'user_id' => $request->input('user_id'),
+        ]);
+
+        $complaint->actions()->create([
+            'description' => 'New complaint issued',
+            'action_status_id' => 3,
+        ]);
+
+        return to_route('complaints.index')->with('success', 'Record created successfully.');
     }
 
     /**
@@ -43,7 +85,14 @@ class ComplaintController extends Controller
      */
     public function show(Complaint $complaint)
     {
-        //
+        abort_unless(auth()->user()->can(['COMPLAINT:VIEW']), 403);
+
+        $actionStatuses = ActionStatus::whereIn('id', [1, 2])->get();
+
+        return view('complaint.show', [
+            'complaint' => $complaint,
+            'action_statuses' => $actionStatuses,
+        ]);
     }
 
     /**
@@ -51,8 +100,13 @@ class ComplaintController extends Controller
      */
     public function edit(Complaint $complaint)
     {
+        abort_unless(auth()->user()->can(['COMPLAINT:EDIT']), 403);
+
+        $users = User::select(['id', 'name'])->get();
+
         return view('complaint.edit', [
-            'complaint' => $complaint
+            'complaint' => $complaint,
+            'users' => $users,
         ]);
     }
 
@@ -61,23 +115,21 @@ class ComplaintController extends Controller
      */
     public function update(UpdateComplaintRequest $request, Complaint $complaint)
     {
-        // dd($request->all());
+        abort_unless(auth()->user()->can(['COMPLAINT:EDIT']), 403);
 
-        // 1. Validate form data
         $request->validate([
-            'title' => ['required', 'max:10'],
-            'description' => ['required']
+            'title' => ['required', 'max:100'],
+            'description' => ['required', 'max:255'],
+            'user_id' => ['required', 'exists:users,id'],
         ]);
 
-        // 2. Update the data
         $complaint->update([
             'title' => $request->input('title'),
-            'description' => $request->input('description')
+            'description' => $request->input('description'),
+            'user_id' => $request->input('user_id'),
         ]);
 
-        // 3. Redirect user to another page
-        return back()->with('success', 'Record updated successfully.');
-        // return to_route('complaint.index')->with('success', 'Record updated successfully.');
+        return to_route('complaints.index')->with('success', 'Record updated successfully.');
     }
 
     /**
@@ -85,6 +137,12 @@ class ComplaintController extends Controller
      */
     public function destroy(Complaint $complaint)
     {
-        //
+        abort_unless(auth()->user()->can(['COMPLAINT:DELETE']), 403);
+
+        $complaint->actions()->delete();
+
+        $complaint->delete();
+
+        return to_route('complaints.index')->with('success', 'Record deleted successfully.');
     }
 }

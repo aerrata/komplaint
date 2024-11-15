@@ -14,9 +14,9 @@ class ActionStatusSeeder extends Seeder
     public function run(): void
     {
         DB::table('action_statuses')->insert([
-            ['name' => 'Completed', 'color' => 'bg-green'],
-            ['name' => 'In-progress', 'color' => 'bg-blue'],
-            ['name' => 'Pending', 'color' => 'bg-warning'],
+            ['name' => 'COMPLETED', 'color' => 'bg-success'],
+            ['name' => 'IN PROGRESS', 'color' => 'bg-primary'],
+            ['name' => 'PENDING', 'color' => 'bg-danger'],
         ]);
     }
 }

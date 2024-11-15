@@ -11,12 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('complaints', function (Blueprint $table) {
-            $table->id();
-            $table->string('title')->nullable();
-            $table->text('description')->nullable();
-            $table->integer('user_id')->nullable();
-            $table->timestamps();
+        Schema::table('complaints', function (Blueprint $table) {
+            $table->integer('type_id')->nullable();
         });
     }
 
@@ -25,6 +21,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('complaints');
+        Schema::table('complaint', function (Blueprint $table) {
+            //
+        });
     }
 };

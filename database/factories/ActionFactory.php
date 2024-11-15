@@ -19,7 +19,7 @@ class ActionFactory extends Factory
     public function definition(): array
     {
         return [
-            'description' => fake()->paragraph(),
+            'description' => fake()->sentence(),
             'complaint_id' => Complaint::pluck('id')->random(),
             'action_status_id' => ActionStatus::pluck('id')->random(),
         ];
